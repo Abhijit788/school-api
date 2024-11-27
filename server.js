@@ -1,18 +1,21 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./db'); // Import the database connection
-require('dotenv').config();
-
 const app = express();
-const PORT = process.env.PORT || 3000; // Set your desired port number
+const PORT = process.env.PORT || 3000;
 
+// Use body-parser to parse JSON requests
 app.use(bodyParser.json());
+
+// Route for the root
+app.get('/', (req, res) => {
+    res.send('Hello World! Your app is working!');
+});
 
 // Add School API
 app.post('/addSchool', async (req, res) => {
     const { name, address, latitude, longitude } = req.body;
 
-    // Input Validation
     if (!name || !address || !latitude || !longitude) {
         return res.status(400).json({ error: 'All fields are required.' });
     }
@@ -31,7 +34,6 @@ app.post('/addSchool', async (req, res) => {
 app.get('/listSchools', async (req, res) => {
     const { latitude, longitude } = req.query;
 
-    // Input Validation
     if (!latitude || !longitude) {
         return res.status(400).json({ error: 'Latitude and longitude are required.' });
     }
@@ -41,7 +43,6 @@ app.get('/listSchools', async (req, res) => {
         const userLat = parseFloat(latitude);
         const userLng = parseFloat(longitude);
 
-        // Calculate distances and sort
         const sortedSchools = schools.map(school => {
             const schoolLat = parseFloat(school.latitude);
             const schoolLng = parseFloat(school.longitude);
