@@ -4,7 +4,7 @@ const db = require('./db'); // Import the database connection
 require('dotenv').config();
 
 const app = express();
-const PORT = 3000; // Set your desired port number
+const PORT = process.env.PORT || 3000; // Set your desired port number
 
 app.use(bodyParser.json());
 
