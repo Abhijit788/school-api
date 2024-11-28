@@ -6,26 +6,58 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware to parse JSON
 app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true })); // Middleware to parse form data
 
 // Home Route
 app.get('/', (req, res) => {
     res.send(`
         <h1>Welcome to the Schools API</h1>
-        <p>Available Endpoints:</p>
-        <ul>
-            <li><strong>POST /addSchool</strong>: Add a new school (JSON payload: name, address, latitude, longitude).</li>
-            <li><strong>GET /listSchools</strong>: List all schools sorted by proximity (Query parameters: latitude, longitude).</li>
-        </ul>
-        <h2>Fetch Nearby Schools</h2>
-        <form action="/listSchools" method="get">
-            <label for="latitude">Latitude:</label>
-            <input type="number" step="any" name="latitude" id="latitude" required>
-            <br>
-            <label for="longitude">Longitude:</label>
-            <input type="number" step="any" name="longitude" id="longitude" required>
-            <br><br>
-            <button type="submit">Get Schools</button>
-        </form>
+        <p>Choose an action:</p>
+        <select id="actionSelector" onchange="toggleSection()">
+            <option value="">-- Select an action --</option>
+            <option value="addSchool">Add School</option>
+            <option value="listSchools">List Schools</option>
+        </select>
+
+        <div id="addSchoolSection" style="display: none;">
+            <h2>Add School</h2>
+            <form action="/addSchool" method="post">
+                <label for="name">Name:</label>
+                <input type="text" name="name" id="name" required>
+                <br>
+                <label for="address">Address:</label>
+                <input type="text" name="address" id="address" required>
+                <br>
+                <label for="latitude">Latitude:</label>
+                <input type="number" step="any" name="latitude" id="latitude" required>
+                <br>
+                <label for="longitude">Longitude:</label>
+                <input type="number" step="any" name="longitude" id="longitude" required>
+                <br><br>
+                <button type="submit">Add School</button>
+            </form>
+        </div>
+
+        <div id="listSchoolsSection" style="display: none;">
+            <h2>List Schools</h2>
+            <form action="/listSchools" method="get">
+                <label for="latitude">Your Latitude:</label>
+                <input type="number" step="any" name="latitude" id="userLatitude" required>
+                <br>
+                <label for="longitude">Your Longitude:</label>
+                <input type="number" step="any" name="longitude" id="userLongitude" required>
+                <br><br>
+                <button type="submit">Get Schools</button>
+            </form>
+        </div>
+
+        <script>
+            function toggleSection() {
+                const action = document.getElementById('actionSelector').value;
+                document.getElementById('addSchoolSection').style.display = action === 'addSchool' ? 'block' : 'none';
+                document.getElementById('listSchoolsSection').style.display = action === 'listSchools' ? 'block' : 'none';
+            }
+        </script>
     `);
 });
 
@@ -40,7 +72,7 @@ app.post('/addSchool', async (req, res) => {
     try {
         const query = `INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)`;
         await db.execute(query, [name, address, latitude, longitude]);
-        res.status(201).send('<h1>School added successfully!</h1>');
+        res.status(201).send('<h1>School added successfully!</h1><br><a href="/">Go Back</a>');
     } catch (error) {
         console.error(error);
         res.status(500).send('<h1>Error: Database error occurred while adding school.</h1>');
