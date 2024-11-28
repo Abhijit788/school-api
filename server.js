@@ -16,6 +16,16 @@ app.get('/', (req, res) => {
             <li><strong>POST /addSchool</strong>: Add a new school (JSON payload: name, address, latitude, longitude).</li>
             <li><strong>GET /listSchools</strong>: List all schools sorted by proximity (Query parameters: latitude, longitude).</li>
         </ul>
+        <h2>Fetch Nearby Schools</h2>
+        <form action="/listSchools" method="get">
+            <label for="latitude">Latitude:</label>
+            <input type="number" step="any" name="latitude" id="latitude" required>
+            <br>
+            <label for="longitude">Longitude:</label>
+            <input type="number" step="any" name="longitude" id="longitude" required>
+            <br><br>
+            <button type="submit">Get Schools</button>
+        </form>
     `);
 });
 
@@ -93,6 +103,8 @@ app.get('/listSchools', async (req, res) => {
         html += `
                 </tbody>
             </table>
+            <br>
+            <a href="/">Go Back</a>
         `;
 
         res.send(html);
