@@ -4,12 +4,19 @@ const db = require('./db'); // Import the database connection
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Use body-parser to parse JSON requests
+// Middleware to parse JSON
 app.use(bodyParser.json());
 
-// Route for the root
+// Home Route
 app.get('/', (req, res) => {
-    res.send('Hello World! Your app is working!');
+    res.send(`
+        <h1>Welcome to the Schools API</h1>
+        <p>Available Endpoints:</p>
+        <ul>
+            <li><strong>POST /addSchool</strong>: Add a new school (JSON payload: name, address, latitude, longitude).</li>
+            <li><strong>GET /listSchools</strong>: List all schools sorted by proximity (Query parameters: latitude, longitude).</li>
+        </ul>
+    `);
 });
 
 // Add School API
@@ -17,16 +24,16 @@ app.post('/addSchool', async (req, res) => {
     const { name, address, latitude, longitude } = req.body;
 
     if (!name || !address || !latitude || !longitude) {
-        return res.status(400).json({ error: 'All fields are required.' });
+        return res.status(400).send('<h1>Error: All fields (name, address, latitude, longitude) are required.</h1>');
     }
 
     try {
         const query = `INSERT INTO schools (name, address, latitude, longitude) VALUES (?, ?, ?, ?)`;
         await db.execute(query, [name, address, latitude, longitude]);
-        res.status(201).json({ message: 'School added successfully!' });
+        res.status(201).send('<h1>School added successfully!</h1>');
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Database error' });
+        res.status(500).send('<h1>Error: Database error occurred while adding school.</h1>');
     }
 });
 
@@ -35,7 +42,7 @@ app.get('/listSchools', async (req, res) => {
     const { latitude, longitude } = req.query;
 
     if (!latitude || !longitude) {
-        return res.status(400).json({ error: 'Latitude and longitude are required.' });
+        return res.status(400).send('<h1>Error: Both latitude and longitude query parameters are required.</h1>');
     }
 
     try {
@@ -43,6 +50,7 @@ app.get('/listSchools', async (req, res) => {
         const userLat = parseFloat(latitude);
         const userLng = parseFloat(longitude);
 
+        // Calculate distances and sort schools
         const sortedSchools = schools.map(school => {
             const schoolLat = parseFloat(school.latitude);
             const schoolLng = parseFloat(school.longitude);
@@ -52,10 +60,45 @@ app.get('/listSchools', async (req, res) => {
             return { ...school, distance };
         }).sort((a, b) => a.distance - b.distance);
 
-        res.status(200).json(sortedSchools);
+        // Generate an HTML table
+        let html = `
+            <h1>List of Schools</h1>
+            <table border="1" cellpadding="10" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        sortedSchools.forEach(school => {
+            html += `
+                <tr>
+                    <td>${school.id}</td>
+                    <td>${school.name}</td>
+                    <td>${school.address}</td>
+                    <td>${school.latitude}</td>
+                    <td>${school.longitude}</td>
+                    <td>${school.distance.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        res.send(html);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Database error' });
+        res.status(500).send('<h1>Error: Could not fetch schools due to a database error.</h1>');
     }
 });
 
