@@ -4,61 +4,55 @@ const db = require('./db'); // Import the database connection
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON
-app.use(bodyParser.json());
-app.use(express.urlencoded({ extended: true })); // Middleware to parse form data
+app.use(bodyParser.urlencoded({ extended: true })); // To handle form data
+app.use(bodyParser.json()); // To handle JSON data
 
-// Home Route
+// Home route with input forms for adding schools and listing schools
 app.get('/', (req, res) => {
-    res.send(`
+    const html = `
         <h1>Welcome to the Schools API</h1>
-        <p>Choose an action:</p>
-        <select id="actionSelector" onchange="toggleSection()">
-            <option value="">-- Select an action --</option>
-            <option value="addSchool">Add School</option>
-            <option value="listSchools">List Schools</option>
-        </select>
+        <h2>Select an Option:</h2>
+        <button onclick="showAddSchoolForm()">Add School</button>
+        <button onclick="showListSchoolsForm()">List Schools</button>
 
-        <div id="addSchoolSection" style="display: none;">
-            <h2>Add School</h2>
-            <form action="/addSchool" method="post">
+        <div id="form-container" style="margin-top: 20px;">
+            <!-- Add School Form -->
+            <form id="addSchoolForm" action="/addSchool" method="POST" style="display: none;">
+                <h3>Add School</h3>
                 <label for="name">Name:</label>
-                <input type="text" name="name" id="name" required>
-                <br>
+                <input type="text" id="name" name="name" required><br>
                 <label for="address">Address:</label>
-                <input type="text" name="address" id="address" required>
-                <br>
+                <input type="text" id="address" name="address" required><br>
                 <label for="latitude">Latitude:</label>
-                <input type="number" step="any" name="latitude" id="latitude" required>
-                <br>
+                <input type="number" step="any" id="latitude" name="latitude" required><br>
                 <label for="longitude">Longitude:</label>
-                <input type="number" step="any" name="longitude" id="longitude" required>
-                <br><br>
+                <input type="number" step="any" id="longitude" name="longitude" required><br>
                 <button type="submit">Add School</button>
             </form>
-        </div>
 
-        <div id="listSchoolsSection" style="display: none;">
-            <h2>List Schools</h2>
-            <form action="/listSchools" method="get">
+            <!-- List Schools Form -->
+            <form id="listSchoolsForm" action="/listSchools" method="GET" style="display: none;">
+                <h3>List Schools</h3>
                 <label for="latitude">Your Latitude:</label>
-                <input type="number" step="any" name="latitude" id="userLatitude" required>
-                <br>
+                <input type="number" step="any" id="latitude" name="latitude" required><br>
                 <label for="longitude">Your Longitude:</label>
-                <input type="number" step="any" name="longitude" id="userLongitude" required>
-                <br><br>
+                <input type="number" step="any" id="longitude" name="longitude" required><br>
                 <button type="submit">Get Schools</button>
             </form>
         </div>
 
         <script>
-            function toggleSection() {
-                const action = document.getElementById('actionSelector').value;
-                document.getElementById('addSchoolSection').style.display = action === 'addSchool' ? 'block' : 'none';
-                document.getElementById('listSchoolsSection').style.display = action === 'listSchools' ? 'block' : 'none';
+            function showAddSchoolForm() {
+                document.getElementById('addSchoolForm').style.display = 'block';
+                document.getElementById('listSchoolsForm').style.display = 'none';
+            }
+            function showListSchoolsForm() {
+                document.getElementById('addSchoolForm').style.display = 'none';
+                document.getElementById('listSchoolsForm').style.display = 'block';
             }
         </script>
-    `);
+    `;
+    res.send(html);
 });
 
 // Add School API
@@ -66,7 +60,7 @@ app.post('/addSchool', async (req, res) => {
     const { name, address, latitude, longitude } = req.body;
 
     if (!name || !address || !latitude || !longitude) {
-        return res.status(400).send('<h1>Error: All fields (name, address, latitude, longitude) are required.</h1>');
+        return res.status(400).send('<h1>Error: All fields are required.</h1><br><a href="/">Go Back</a>');
     }
 
     try {
@@ -75,7 +69,7 @@ app.post('/addSchool', async (req, res) => {
         res.status(201).send('<h1>School added successfully!</h1><br><a href="/">Go Back</a>');
     } catch (error) {
         console.error(error);
-        res.status(500).send('<h1>Error: Database error occurred while adding school.</h1>');
+        res.status(500).send('<h1>Error: Could not add school due to a database error.</h1><br><a href="/">Go Back</a>');
     }
 });
 
@@ -92,13 +86,23 @@ app.get('/listSchools', async (req, res) => {
         const userLat = parseFloat(latitude);
         const userLng = parseFloat(longitude);
 
+        // Helper function to calculate the distance in kilometers using Haversine formula
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of Earth in kilometers
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in kilometers
+        }
+
         // Calculate distances and sort schools
         const sortedSchools = schools.map(school => {
             const schoolLat = parseFloat(school.latitude);
             const schoolLng = parseFloat(school.longitude);
-            const distance = Math.sqrt(
-                Math.pow(schoolLat - userLat, 2) + Math.pow(schoolLng - userLng, 2)
-            );
+            const distance = haversineDistance(userLat, userLng, schoolLat, schoolLng);
             return { ...school, distance };
         }).sort((a, b) => a.distance - b.distance);
 
@@ -113,7 +117,7 @@ app.get('/listSchools', async (req, res) => {
                         <th>Address</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
-                        <th>Distance</th>
+                        <th>Distance (km)</th>
                     </tr>
                 </thead>
                 <tbody>
